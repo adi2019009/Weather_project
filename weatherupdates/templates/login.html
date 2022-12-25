@@ -1,0 +1,27 @@
+{% extends 'weatherupdates/base.html'%}
+{% block content %}
+<div class="container pt-4" >
+   <div class="col-lg-4 mx-auto shadow p-0 ">
+       <div class="alert alert-info"  style="margin-top:50%">
+         <h2>Login Here</h2>
+         
+        <div class="p-4">
+          <form action="/login/" method="POST">
+            {% csrf_token %}
+            {{ form.as_table }}
+            <hr>
+            <div style="display: flex;
+            flex-direction: row;">
+            <input type="submit" value="Login" class="btn btn-info">
+            <a class="nav-link btn " href="/signup">Signup</a>
+            </div>
+          </form>
+        </div>
+     </div>
+        
+    </div>
+</div>
+{% endblock %}
+   
+   
+  
