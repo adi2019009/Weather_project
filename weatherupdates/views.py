@@ -4,16 +4,16 @@ from datetime import datetime
 from django.http import HttpResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.forms import authenticate 
+from django.contrib.auth.forms import authenticate
 from django.contrib.auth import login as loginUser, logout as logoutuser
 from .forms import UserRegistrationForm
 from django.contrib.auth.decorators import login_required
-
-
+from .models import CityWeatherData
+from .serializer import WeatherSerializer
 
 
 def signup(request):
-    if request.method=='GET':
+    if request.method == 'GET':
         print("Hello Ramu")
         form = UserRegistrationForm()
         message = None
@@ -24,9 +24,9 @@ def signup(request):
         if form.is_valid():
             user = form.save()
             if user is not None:
-                loginUser (request, user)
+                loginUser(request, user)
                 return redirect('home')
-                
+
 # pip install django-bootstrap-datepicker-plus
         else:
             expalnation = form.errors.as_data()
@@ -48,20 +48,20 @@ def index(request):
         # checking if the method is POST
         API_KEY = '4da85e50a9e8c8b0e38766bcdb4de4da'
         if request.method == 'POST':
-            # getting the city name from the form input   
+            # getting the city name from the form input
             city_name = request.POST.get('city')
-            # the url for current weather, takes city_name and API_KEY   
+            # the url for current weather, takes city_name and API_KEY
             url = f'https://api.openweathermap.org/data/2.5/weather?q={city_name}&units=metric&appid={API_KEY}'
             # url = f'http://api.openweathermap.org/data/2.5/weather?q={city_name}&units=imperial&appid={API_KEY}'
 
             # city = 'Las Vegas'
 
-            # converting the request response to json   
+            # converting the request response to json
             response = requests.get(url).json()
             # print(response)
             # getting the current time
             current_time = datetime.now()
-            # formatting the time using directives, it will take this format Day, Month Date Year, Current Time 
+            # formatting the time using directives, it will take this format Day, Month Date Year, Current Time
             formatted_time = current_time.strftime("%A, %B %d %Y, %H:%M:%S %p")
             # bundling the weather information in one dictionary
             cities_weather_update = [{
@@ -74,29 +74,29 @@ def index(request):
                 'humidity': 'Humidity: ' + str(response['main']['humidity']) + '%',
                 'time': formatted_time
             }]
-           
 
             # if the request method is GET empty the dictionary
         else:
-            CITIES=['Mumbai','Delhi','Bangalore','Hyderabad','Kolkata']
-            
+            CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Kolkata']
+
             cities_weather_update = []
-            
+            CityWeatherData.objects.all().delete()
             for city_name in CITIES:
                 url = f'https://api.openweathermap.org/data/2.5/weather?q={city_name}&units=metric&appid={API_KEY}'
                 # url = f'http://api.openweathermap.org/data/2.5/weather?q={city_name}&units=imperial&appid={API_KEY}'
 
                 # city = 'Las Vegas'
 
-                # converting the request response to json   
+                # converting the request response to json
                 response = requests.get(url).json()
                 # print(response)
                 # getting the current time
                 current_time = datetime.now()
-                # formatting the time using directives, it will take this format Day, Month Date Year, Current Time 
-                formatted_time = current_time.strftime("%A, %B %d %Y, %H:%M:%S %p")
+                # formatting the time using directives, it will take this format Day, Month Date Year, Current Time
+                formatted_time = current_time.strftime(
+                    "%A, %B %d %Y, %H:%M:%S %p")
                 # bundling the weather information in one dictionary
-                city_weather_update = {
+                city_weather_update_single = {
                     'city': city_name,
                     'description': response['weather'][0]['description'],
                     'icon': response['weather'][0]['icon'],
@@ -107,53 +107,56 @@ def index(request):
                     'time': formatted_time
                 }
 
-                
+                print('printing all info ', city_weather_update_single)
 
+                serializer = WeatherSerializer(
+                    data=city_weather_update_single)
 
-                cities_weather_update.append(city_weather_update)
-                
-            
+                if(serializer.is_valid()):
+                    print('data is saved')
+                    serializer.save()
+                else:
+                    print(serializer.errors)
+
+                cities_weather_update.append(city_weather_update_single)
+
         context = {'cities_weather_update': cities_weather_update}
-
+        try:
+            weather = CityWeatherData.objects.all()
+            print('weather data is ', weather)
+        except:
+            print('error !! ')
         return render(request, 'weatherupdates/home.html', context)
 
-
     except Exception as e:
-        print (e)
+        print(e)
         return render(request, 'weatherupdates/404.html')
 
 
-
 def login(request):
-    if request.method=='GET':
-        form=AuthenticationForm()
+    if request.method == 'GET':
+        form = AuthenticationForm()
         context = {
-            "form" : form
-       }
-        return render(request,'login.html', context=context)
+            "form": form
+        }
+        return render(request, 'login.html', context=context)
     else:
-        form=AuthenticationForm(data=request.POST)
-        # print(form.is_valid())  
+        form = AuthenticationForm(data=request.POST)
+        # print(form.is_valid())
         if form.is_valid():
-            username=form.cleaned_data.get('username')
-            password=form.cleaned_data.get('password')
-            user=authenticate(username=username, password=password)
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
             if user is not None:
                 loginUser(request, user)
                 return redirect('home')
         else:
             context = {
-                "form" : form
+                "form": form
             }
-            return render(request,'login.html', context=context)
+            return render(request, 'login.html', context=context)
 
 
 def logout(request):
     logoutuser(request)
     return redirect('login')
-
-
-
-
-
-
